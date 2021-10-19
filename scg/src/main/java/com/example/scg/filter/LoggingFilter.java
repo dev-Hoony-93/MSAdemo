@@ -3,7 +3,9 @@ package com.example.scg.filter;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.OrderedGatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.core.Ordered;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -11,17 +13,17 @@ import reactor.core.publisher.Mono;
 
 @Component
 @Slf4j
-public class GlobalFilter extends AbstractGatewayFilterFactory<GlobalFilter.Config> {
+public class LoggingFilter extends AbstractGatewayFilterFactory<LoggingFilter.Config> {
 
 
-    public GlobalFilter(){
+    public LoggingFilter(){
         super(Config.class);
     }
 
     @Override
     public GatewayFilter apply(Config config) {
 
-        return (exchange, chain) -> {
+  /*      return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest(); // reactive포함된거로 import
             ServerHttpResponse response = exchange.getResponse();
 
@@ -36,11 +38,31 @@ public class GlobalFilter extends AbstractGatewayFilterFactory<GlobalFilter.Conf
             //Mono는 webflux에서 단일값 전송할때 Mono값으로 전송
             return chain.filter(exchange).then(Mono.fromRunnable(()->{
                 if (config.isPostLogger()){
-                    log.info("Global Filter End: response statuscode -> {}" , response.getStatusCode());
+                    log.info("Global Filter End: request id -> {}" , response.getStatusCode());
                 }
             }));
 
-        };
+        };*/
+
+        GatewayFilter filter = new OrderedGatewayFilter((exchange, chain) -> {
+            ServerHttpRequest request = exchange.getRequest(); // reactive포함된거로 import
+            ServerHttpResponse response = exchange.getResponse();
+
+            log.info("Logging filter baseMessgae: {}", config.getBaseMessage());
+
+            if (config.isPreLogger()){
+                log.info("Logging Pre Filter Start: request id -> {}" , request.getId());
+            }
+
+            //Mono는 webflux에서 단일값 전송할때 Mono값으로 전송
+            return chain.filter(exchange).then(Mono.fromRunnable(()->{
+                if (config.isPostLogger()){
+                    log.info("Logging Post Filter End: response code -> {}" , response.getStatusCode());
+                }
+            }));
+        }, Ordered.HIGHEST_PRECEDENCE);
+
+        return filter;
     }
 
     @Data
